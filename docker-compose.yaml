@@ -6,7 +6,7 @@ services:
     image: alpine:latest
     container_name: knowledge_init_volumes
     user: "0:0"
-    restart: "no"
+    restart: unless-stopped
     network_mode: none
     volumes:
       - ${DATA_DIR:-/srv/data/ai-knowledge}:/data
@@ -19,7 +19,14 @@ services:
         echo ">>> [Init] Setting permissions..."
         chmod -R 775 /data
 
-        echo ">>> [Init] AI Knowledge directories initialized successfully!"
+        echo ">>> [Init] AI Knowledge directories initialized successfully! Storage guard active."
+        sleep infinity
+    healthcheck:
+      test: ["CMD-SHELL", "test -d /data/qdrant && test -d /data/mem0 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
 
   # ========================================================
   # QDRANT VECTOR DATABASE (High-Performance Vector Store)
@@ -45,7 +52,7 @@ services:
           memory: 512M
     depends_on:
       init-volumes:
-        condition: service_completed_successfully
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "timeout 5s bash -c '</dev/tcp/127.0.0.1/6333' || exit 1"]
       interval: 15s
@@ -234,7 +241,7 @@ async def api_key_auth_middleware(request: Request, call_next):
           memory: 256M
     depends_on:
       init-volumes:
-        condition: service_completed_successfully
+        condition: service_healthy
       qdrant:
         condition: service_healthy
       neo4j:
@@ -284,7 +291,7 @@ async def api_key_auth_middleware(request: Request, call_next):
           memory: 512M
     depends_on:
       init-volumes:
-        condition: service_completed_successfully
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:7474/ || exit 1"]
       interval: 15s
