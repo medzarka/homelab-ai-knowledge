@@ -135,9 +135,7 @@ services:
             \"vector_store\": {{
                 \"provider\": \"qdrant\",
                 \"config\": {{
-                    \"host\": \"{qdrant_host}\",
-                    \"port\": {qdrant_port},
-                    \"https\": False,
+                    \"url\": \"http://{qdrant_host}:{qdrant_port}\",
                     \"api_key\": {repr(qdrant_api_key)},
                     \"collection_name\": \"{qdrant_collection}\"
                 }}
