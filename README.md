@@ -75,8 +75,8 @@ You can use Mem0 directly via REST API or the official Python client:
 ```python
 from mem0 import MemoryClient
 
-# Connect to self-hosted Mem0 API
-client = MemoryClient(api_key="none", host="http://100.83.191.68:8000")
+# Connect to self-hosted Mem0 API (via private mesh or public domain)
+client = MemoryClient(api_key="your_mem0_api_key", host="http://100.x.y.z:8000")
 
 # Add memory for a specific user or agent
 client.add("User prefers dark mode and is building an AI homelab on ARM64.", user_id="user_123")
