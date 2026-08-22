@@ -137,6 +137,7 @@ services:
                 \"config\": {{
                     \"host\": \"{qdrant_host}\",
                     \"port\": {qdrant_port},
+                    \"https\": False,
                     \"api_key\": {repr(qdrant_api_key)},
                     \"collection_name\": \"{qdrant_collection}\"
                 }}
