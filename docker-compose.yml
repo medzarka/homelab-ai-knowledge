@@ -110,34 +110,34 @@ services:
 
         echo ">>> [Mem0] Injecting API Key authentication guard..."
         python3 -c "
-        import os, re
+        import os, re, textwrap
         with open('/app/main.py', 'r') as f:
             code = f.read()
 
-        auth_middleware = '''
-from fastapi import Request
-from fastapi.responses import JSONResponse
+        auth_middleware = textwrap.dedent('''
+        from fastapi import Request
+        from fastapi.responses import JSONResponse
 
-@app.middleware(\"http\")
-async def api_key_auth_middleware(request: Request, call_next):
-    expected_key = os.environ.get(\"MEM0_API_KEY\")
-    if expected_key:
-        if request.url.path in [\"/docs\", \"/openapi.json\", \"/redoc\", \"/\"]:
+        @app.middleware(\"http\")
+        async def api_key_auth_middleware(request: Request, call_next):
+            expected_key = os.environ.get(\"MEM0_API_KEY\")
+            if expected_key:
+                if request.url.path in [\"/docs\", \"/openapi.json\", \"/redoc\", \"/\"]:
+                    return await call_next(request)
+                auth_header = request.headers.get(\"Authorization\", \"\")
+                api_key_header = request.headers.get(\"X-API-Key\", \"\") or request.headers.get(\"api-key\", \"\")
+                token = \"\"
+                if auth_header.startswith(\"Bearer \"):
+                    token = auth_header[7:].strip()
+                elif auth_header:
+                    token = auth_header.strip()
+                elif api_key_header:
+                    token = api_key_header.strip()
+                
+                if token != expected_key:
+                    return JSONResponse(status_code=401, content={\"detail\": \"Invalid or missing Mem0 API Key\"})
             return await call_next(request)
-        auth_header = request.headers.get(\"Authorization\", \"\")
-        api_key_header = request.headers.get(\"X-API-Key\", \"\") or request.headers.get(\"api-key\", \"\")
-        token = \"\"
-        if auth_header.startswith(\"Bearer \"):
-            token = auth_header[7:].strip()
-        elif auth_header:
-            token = auth_header.strip()
-        elif api_key_header:
-            token = api_key_header.strip()
-        
-        if token != expected_key:
-            return JSONResponse(status_code=401, content={\"detail\": \"Invalid or missing Mem0 API Key\"})
-    return await call_next(request)
-'''
+        ''')
 
         if 'api_key_auth_middleware' not in code:
             code = re.sub(r'(app = FastAPI\([^)]+\))', r'\1\n' + auth_middleware, code)
@@ -239,6 +239,12 @@ async def api_key_auth_middleware(request: Request, call_next):
           memory: 1536M
         reservations:
           memory: 256M
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/openapi.json\").read()' || exit 1"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     depends_on:
       init-volumes:
         condition: service_healthy
