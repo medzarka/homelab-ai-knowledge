@@ -314,22 +314,22 @@ services:
       - PDF_RENDER_DPI=${PDF_RENDER_DPI:-150}
       - MAX_CONCURRENT_INDEXING_JOBS=${MAX_CONCURRENT_INDEXING_JOBS:-1}
       - INDEXING_REQUEST_TIMEOUT=${INDEXING_REQUEST_TIMEOUT:-300}
-      - EMBEDDING_PRIMARY_URL=${EMBEDDING_PRIMARY_URL:-http://100.64.0.3:8089/embed}
+      - EMBEDDING_PRIMARY_URL=${EMBEDDING_PRIMARY_URL:-http://compute_embeddings:80/embed}
       - EMBEDDING_FALLBACK_URL=${EMBEDDING_FALLBACK_URL:-http://litellm:4000/v1/embeddings}
       - EMBEDDING_FALLBACK_KEY=${LITELLM_MASTER_KEY:-}
       - EMBEDDING_MODEL=${EMBEDDING_MODEL:-BAAI/bge-m3}
-      - RERANKER_PRIMARY_URL=${RERANKER_PRIMARY_URL:-http://100.64.0.3:8087/rerank}
+      - RERANKER_PRIMARY_URL=${RERANKER_PRIMARY_URL:-http://compute_reranker:80/rerank}
       - RERANKER_FALLBACK_URL=${RERANKER_FALLBACK_URL:-http://litellm:4000/v1/rerank}
       - RERANKER_FALLBACK_KEY=${LITELLM_MASTER_KEY:-}
       - RERANKER_MODEL=${RERANKER_MODEL:-BAAI/bge-reranker-v2-m3}
       - VISION_PRIMARY_PROVIDER=local
-      - VISION_PRIMARY_URL=${VISION_PRIMARY_URL:-http://100.64.0.3:11434/api/chat}
+      - VISION_PRIMARY_URL=${VISION_PRIMARY_URL:-http://compute_ollama:11434/api/chat}
       - VISION_PRIMARY_MODEL=${VISION_PRIMARY_MODEL:-qwen2.5vl:3b}
       - VISION_FALLBACK_PROVIDER=litellm
       - VISION_FALLBACK_URL=${VISION_FALLBACK_URL:-http://litellm:4000/v1/chat/completions}
       - VISION_FALLBACK_KEY=${LITELLM_MASTER_KEY:-}
       - VISION_FALLBACK_MODEL=${VISION_FALLBACK_MODEL:-google/gemini-2.0-flash}
-      - AUDIO_PRIMARY_URL=${AUDIO_PRIMARY_URL:-http://100.64.0.3:8086/v1/audio/transcriptions}
+      - AUDIO_PRIMARY_URL=${AUDIO_PRIMARY_URL:-http://compute_speaches:8000/v1/audio/transcriptions}
       - AUDIO_PRIMARY_MODEL=${AUDIO_PRIMARY_MODEL:-Systran/faster-whisper-large-v3}
       - AUDIO_FALLBACK_URL=${AUDIO_FALLBACK_URL:-http://litellm:4000/v1/audio/transcriptions}
       - AUDIO_FALLBACK_KEY=${LITELLM_MASTER_KEY:-}
@@ -356,6 +356,7 @@ services:
       - traefik.docker.network=${SHARED_NETWORK:-shared_net}
     networks:
       - shared_net
+      - homelab_swarm_net
     logging:
       driver: "json-file"
       options:
@@ -365,4 +366,7 @@ services:
 networks:
   shared_net:
     name: ${SHARED_NETWORK:-shared_net}
+    external: true
+  homelab_swarm_net:
+    name: ${SWARM_NETWORK:-homelab_swarm_net}
     external: true

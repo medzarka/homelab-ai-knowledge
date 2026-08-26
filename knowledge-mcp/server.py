@@ -41,20 +41,20 @@ MAX_CONCURRENT_JOBS = int(os.environ.get("MAX_CONCURRENT_INDEXING_JOBS", 1))
 REQUEST_TIMEOUT = float(os.environ.get("INDEXING_REQUEST_TIMEOUT", 300))
 
 # --- AI Services & Fallback Configuration ---
-EMBEDDING_PRIMARY_URL = os.environ.get("EMBEDDING_PRIMARY_URL", "http://100.64.0.3:8089/embed")
+EMBEDDING_PRIMARY_URL = os.environ.get("EMBEDDING_PRIMARY_URL", "http://compute_embeddings:80/embed")
 EMBEDDING_PRIMARY_KEY = os.environ.get("EMBEDDING_PRIMARY_KEY", "sk-homelab-tei-secure-key")
 EMBEDDING_FALLBACK_URL = os.environ.get("EMBEDDING_FALLBACK_URL", "http://litellm:4000/v1/embeddings")
 EMBEDDING_FALLBACK_KEY = os.environ.get("EMBEDDING_FALLBACK_KEY", "")
 EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "BAAI/bge-m3")
 
-RERANKER_PRIMARY_URL = os.environ.get("RERANKER_PRIMARY_URL", "http://100.64.0.3:8087/rerank")
+RERANKER_PRIMARY_URL = os.environ.get("RERANKER_PRIMARY_URL", "http://compute_reranker:80/rerank")
 RERANKER_PRIMARY_KEY = os.environ.get("RERANKER_PRIMARY_KEY", "sk-homelab-tei-secure-key")
 RERANKER_FALLBACK_URL = os.environ.get("RERANKER_FALLBACK_URL", "http://litellm:4000/v1/rerank")
 RERANKER_FALLBACK_KEY = os.environ.get("RERANKER_FALLBACK_KEY", "")
 RERANKER_MODEL = os.environ.get("RERANKER_MODEL", "BAAI/bge-reranker-v2-m3")
 
 VISION_PRIMARY_PROVIDER = os.environ.get("VISION_PRIMARY_PROVIDER", "local")
-VISION_PRIMARY_URL = os.environ.get("VISION_PRIMARY_URL", "http://100.64.0.3:11434/api/chat")
+VISION_PRIMARY_URL = os.environ.get("VISION_PRIMARY_URL", "http://compute_ollama:11434/api/chat")
 VISION_PRIMARY_KEY = os.environ.get("VISION_PRIMARY_KEY", "sk-homelab-ollama-secure-key")
 VISION_PRIMARY_MODEL = os.environ.get("VISION_PRIMARY_MODEL", "qwen2.5vl:3b")
 
@@ -63,7 +63,7 @@ VISION_FALLBACK_URL = os.environ.get("VISION_FALLBACK_URL", "http://litellm:4000
 VISION_FALLBACK_KEY = os.environ.get("VISION_FALLBACK_KEY", "")
 VISION_FALLBACK_MODEL = os.environ.get("VISION_FALLBACK_MODEL", "google/gemini-2.0-flash")
 
-AUDIO_PRIMARY_URL = os.environ.get("AUDIO_PRIMARY_URL", "http://100.64.0.3:8086/v1/audio/transcriptions")
+AUDIO_PRIMARY_URL = os.environ.get("AUDIO_PRIMARY_URL", "http://compute_speaches:8000/v1/audio/transcriptions")
 AUDIO_PRIMARY_KEY = os.environ.get("AUDIO_PRIMARY_KEY", "sk-homelab-speaches-secure-key")
 AUDIO_PRIMARY_MODEL = os.environ.get("AUDIO_PRIMARY_MODEL", "Systran/faster-whisper-large-v3")
 AUDIO_FALLBACK_URL = os.environ.get("AUDIO_FALLBACK_URL", "http://litellm:4000/v1/audio/transcriptions")
