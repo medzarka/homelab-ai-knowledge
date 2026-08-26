@@ -1,3 +1,15 @@
+> ### 🌐 [Homelab Sovereign Cluster Architecture](https://github.com/medzarka/homelab-nodes)
+> This repository is a modular component of the **Homelab Sovereign Multi-Node Cluster** — an enterprise-grade, privacy-first, self-hosted infrastructure spanning cloud VPS, on-premise compute servers, and edge ARM nodes.
+> 
+> * **Zero-Trust Network**: Multi-host WireGuard mesh interconnect via **Tailscale** with strict **Firewalld** zoning (`iptables: false`).
+> * **Unified Identity & Ingress**: Centralized reverse proxy via **Traefik v3**, **Authelia SSO (2FA)**, and **LLDAP Directory**.
+> * **Cluster Orchestration & GitOps**: High-availability **Docker Swarm** managed declaratively via **Arcane Cockpit**.
+> * **End-to-End Observability**: Centralized portal (**Homepage**), metrics (**Beszel**), real-time logs (**Dozzle**), and uptime monitoring (**Uptime Kuma**).
+> * **Sovereign Local AI & Compute**: Distributed inference (**LiteLLM**, **Ollama**, **Qdrant**, **Mem0**, **Hermes Agents**).
+> * **Private Cloud & Storage**: Encrypted data synchronization, automated backups, and multi-cloud mirrors.
+
+---
+
 # 🧠 Homelab AI Knowledge Hub & Multi-Modal MCP Server
 
 A sovereign, high-performance **Multi-Modal AI Knowledge & Long-Term Memory Engine** designed for **Hermes Agent**, **Open-WebUI**, **Claude**, and **Autonomous Coding Agents**.
@@ -18,7 +30,7 @@ The platform unifies **Qdrant Vector Database**, **Neo4j Knowledge Graph**, **Me
    - Multi-page PDFs are split into **standalone single-page PDFs** in RAM with full document metadata inheritance.
    - Preserves original digital text, fonts, and vector paths without converting blindly to flat lossy images.
 3. **150 DPI In-Memory Normalized Rendering**:
-   - Visual pages and handwritten student answer sheets are rendered in RAM at **150 DPI** (configurable via `PDF_RENDER_DPI=150`) for sharp OCR/math transcription with minimum CPU memory footprint.
+   - Visual pages and handwritten answer sheets are rendered in RAM at **150 DPI** (configurable via `PDF_RENDER_DPI=150`) for sharp OCR/math transcription with minimum CPU memory footprint.
 4. **Multi-Modal Ingestion Pipeline**:
    - **Text & Code** (`.md`, `.py`, `.json`, `.yaml`, `.c`, `.cpp`, `.rs`, `.java`, `.txt`): Structure-aware chunking.
    - **PDFs** (`.pdf`): Digital text extraction + Qwen2.5-VL academic handwriting/math transcription.
@@ -29,7 +41,7 @@ The platform unifies **Qdrant Vector Database**, **Neo4j Knowledge Graph**, **Me
 6. **Strict CPU Concurrency Guard**:
    - Limits parallel inference to `MAX_CONCURRENT_INDEXING_JOBS=1` to prevent CPU core starvation on compute nodes.
 7. **Transparent Primary & Fallback Failover**:
-   - Automatically fails over from local `zap-srv` models to LiteLLM / external providers if a service is busy or offline (respecting the 1024-dimension vector constraint).
+   - Automatically fails over from local compute models to LiteLLM / external providers if a service is busy or offline (respecting the 1024-dimension vector constraint).
 
 ---
 
@@ -88,7 +100,7 @@ mcp_servers:
   # 1. Homelab AI Knowledge Hub (Vector Search, File Ingestion, Neo4j, Mem0)
   knowledge_hub:
     transport: sse
-    url: http://100.110.173.116:8095/sse
+    url: http://100.x.y.z:8095/sse
     timeout: 300
     headers:
       Content-Type: application/json
@@ -96,7 +108,7 @@ mcp_servers:
   # 2. Homelab Agent Sandbox (Multi-Language Compiler & Execution Engine)
   agent_sandbox:
     transport: sse
-    url: http://100.110.173.116:8088/sse
+    url: http://100.x.y.z:8088/sse
     timeout: 120
 
 # Optional: Configure Mem0 directly for conversational history
@@ -172,7 +184,7 @@ def on_agent_task_complete():
 ```
 
 **Hermes Response:**
-> *"According to **Page 2 of `244255.pdf`** (Student #25, Hannan Abid), the student implemented `insererTete` as follows:*
+> *"According to **Page 2 of `sample_exam_25.pdf`** (Student #25), the student implemented `insererTete` as follows:*
 > ```c
 > Voiture* insererTete(Voiture *tete, int num_plaque, int nb_heures) {
 >     Voiture *nv;
@@ -210,7 +222,7 @@ def on_agent_task_complete():
 ```dotenv
 # --- Ingress & Ports ---
 KNOWLEDGE_MCP_PORT=8095
-KNOWLEDGE_MCP_DOMAIN=knowledge-mcp.bluewave.work
+KNOWLEDGE_MCP_DOMAIN=knowledge-mcp.example.com
 QDRANT_COLLECTION_WORKSPACE=workspace
 
 # --- Concurrency & Resolution Tuning ---
@@ -218,13 +230,13 @@ PDF_RENDER_DPI=150
 MAX_CONCURRENT_INDEXING_JOBS=1
 INDEXING_REQUEST_TIMEOUT=300
 
-# --- Primary Local Models (zap-srv) ---
-EMBEDDING_PRIMARY_URL=http://100.110.173.116:8089/embed
-RERANKER_PRIMARY_URL=http://100.110.173.116:8087/rerank
+# --- Primary Local Models (Compute Node) ---
+EMBEDDING_PRIMARY_URL=http://100.x.y.z:8089/embed
+RERANKER_PRIMARY_URL=http://100.x.y.z:8087/rerank
 VISION_PRIMARY_PROVIDER=local
-VISION_PRIMARY_URL=http://100.110.173.116:11434/api/chat
+VISION_PRIMARY_URL=http://100.x.y.z:11434/api/chat
 VISION_PRIMARY_MODEL=qwen2.5vl:3b
-AUDIO_PRIMARY_URL=http://100.110.173.116:8086/v1/audio/transcriptions
+AUDIO_PRIMARY_URL=http://100.x.y.z:8086/v1/audio/transcriptions
 AUDIO_PRIMARY_MODEL=Systran/faster-whisper-large-v3
 
 # --- Cloud / LiteLLM Fallback Providers ---
