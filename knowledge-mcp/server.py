@@ -82,7 +82,7 @@ KNOWLEDGE_MCP_API_KEY = os.environ.get("KNOWLEDGE_MCP_API_KEY", "")
 PIPELINE_SEMAPHORE = asyncio.Semaphore(MAX_CONCURRENT_JOBS)
 
 # --- Clients ---
-qdrant_client = QdrantClient(host=QDRANT_HOST, port=QDRANT_PORT, api_key=QDRANT_API_KEY, timeout=30)
+qdrant_client = QdrantClient(url=f"http://{QDRANT_HOST}:{QDRANT_PORT}", api_key=QDRANT_API_KEY, timeout=30)
 http_client = httpx.AsyncClient(timeout=httpx.Timeout(REQUEST_TIMEOUT, connect=10.0))
 
 # --- Academic Vision Prompt ---

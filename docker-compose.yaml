@@ -348,6 +348,7 @@ services:
       - traefik.http.routers.knowledge-mcp.rule=Host(`${KNOWLEDGE_MCP_DOMAIN:-knowledge-mcp.example.com}`)
       - traefik.http.routers.knowledge-mcp.entrypoints=websecure
       - traefik.http.routers.knowledge-mcp.tls=true
+      - traefik.http.routers.knowledge-mcp.tls.certresolver=cloudflare
       - traefik.http.routers.knowledge-mcp.middlewares=app-fail2ban,security-headers
       - traefik.http.services.knowledge-mcp.loadbalancer.server.port=8095
       - traefik.docker.network=${SWARM_NETWORK:-homelab_swarm_net}
