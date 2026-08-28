@@ -299,6 +299,7 @@ services:
       context: ./knowledge-mcp
       dockerfile: Dockerfile
     image: homelab-knowledge-mcp:latest
+    pull_policy: never
     container_name: knowledge_mcp
     restart: unless-stopped
 
