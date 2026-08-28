@@ -100,7 +100,7 @@ mcp_servers:
   # 1. Homelab AI Knowledge Hub (Vector Search, File Ingestion, Neo4j, Mem0)
   knowledge_hub:
     transport: sse
-    url: http://100.x.y.z:8095/sse
+    url: http://knowledge-mcp:8095/sse
     timeout: 300
     headers:
       Content-Type: application/json
@@ -136,7 +136,7 @@ To keep your `/workspace` continuously synchronized with Qdrant without wasting 
 The script is located at `/app/smart_walker.py`. You can run a manual test run at any time:
 
 ```bash
-python3 /app/smart_walker.py --dir /workspace --server http://127.0.0.1:8095 --collection hermes_workspace
+python3 /app/smart_walker.py --dir /workspace --server http://knowledge-mcp:8095 --collection hermes_workspace
 ```
 
 ---
@@ -210,7 +210,7 @@ def on_agent_task_complete():
   "arguments": {
     "file_path": "/workspace/network_topology.png",
     "collection": "workspace",
-    "tags": ["network", "architecture"]
+    "tags": "network, architecture"
   }
 }
 ```

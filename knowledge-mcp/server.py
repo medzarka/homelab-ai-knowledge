@@ -384,7 +384,7 @@ async def search_knowledge(
 async def index_file(
     file_path: str,
     collection: str = DEFAULT_COLLECTION,
-    tags: Optional[List[str]] = None
+    tags: str = ""
 ) -> str:
     """
     Ingests, parses, chunks, and indexes any file (PDF page-by-page, images via Vision, audio via STT, code/text) into Qdrant.
@@ -393,7 +393,7 @@ async def index_file(
     Args:
         file_path: Absolute or workspace path to the file.
         collection: Qdrant collection name (default: 'workspace').
-        tags: Optional categorization tags.
+        tags: Optional comma-separated list of categorization tags (e.g., 'pdf,report,urgent').
     """
     ensure_collection(collection)
     p = Path(file_path)
@@ -453,7 +453,7 @@ async def index_file(
                                 "page_number": page_idx + 1,
                                 "total_pages": total_pages,
                                 "has_handwriting": has_handwriting,
-                                "tags": tags or [],
+                                "tags": [t.strip() for t in tags.split(",") if t.strip()] if tags else [],
                                 "content_text": page_text,
                                 "indexed_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
                             }
@@ -479,7 +479,7 @@ async def index_file(
                             "file_name": p.name,
                             "file_hash": file_hash,
                             "document_type": "image",
-                            "tags": tags or [],
+                            "tags": [t.strip() for t in tags.split(",") if t.strip()] if tags else [],
                             "content_text": image_desc,
                             "indexed_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
                         }
@@ -503,7 +503,7 @@ async def index_file(
                             "file_name": p.name,
                             "file_hash": file_hash,
                             "document_type": "audio_recording",
-                            "tags": tags or [],
+                            "tags": [t.strip() for t in tags.split(",") if t.strip()] if tags else [],
                             "content_text": transcript,
                             "indexed_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
                         }
@@ -534,7 +534,7 @@ async def index_file(
                                 "document_type": "code_or_text",
                                 "chunk_id": c_idx + 1,
                                 "total_chunks": len(chunks),
-                                "tags": tags or [],
+                                "tags": [t.strip() for t in tags.split(",") if t.strip()] if tags else [],
                                 "content_text": chunk,
                                 "indexed_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
                             }
@@ -579,7 +579,13 @@ async def index_file(
 
 @mcp.tool()
 async def delete_file_from_knowledge(file_path: str, collection: str = DEFAULT_COLLECTION) -> str:
-    """Removes all vectors and chunks associated with a specific file from Qdrant."""
+    """
+    Removes all vectors and chunks associated with a specific file from Qdrant.
+    
+    Args:
+        file_path: Absolute or workspace path to the file to delete.
+        collection: Qdrant collection name (default: 'workspace').
+    """
     ensure_collection(collection)
     resolved_path = str(Path(file_path).resolve())
     try:
@@ -602,7 +608,12 @@ async def delete_file_from_knowledge(file_path: str, collection: str = DEFAULT_C
 
 @mcp.tool()
 async def query_knowledge_graph(cypher_query: str) -> str:
-    """Executes a Cypher query on the Neo4j Knowledge Graph to traverse entity relationships."""
+    """
+    Executes a Cypher query on the Neo4j Knowledge Graph to traverse entity relationships.
+    
+    Args:
+        cypher_query: The Cypher query string to execute against the Neo4j database.
+    """
     from neo4j import GraphDatabase
     try:
         driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASS))
@@ -616,7 +627,13 @@ async def query_knowledge_graph(cypher_query: str) -> str:
 
 @mcp.tool()
 async def search_memory(query: str, user_id: str = "default") -> str:
-    """Queries Mem0 long-term conversational memory for user context and facts."""
+    """
+    Queries Mem0 long-term conversational memory for user context and facts.
+    
+    Args:
+        query: The natural language search query to find relevant memories.
+        user_id: The ID of the user whose memories to search (default: 'default').
+    """
     try:
         headers = {"Authorization": f"Bearer {MEM0_API_KEY}"} if MEM0_API_KEY else {}
         resp = await http_client.post(
@@ -694,7 +711,8 @@ async def rest_search(req: SearchRequest):
 
 @app.post("/index-file")
 async def rest_index_file(req: IndexFileRequest):
-    res = await index_file(req.file_path, req.collection or DEFAULT_COLLECTION, req.tags)
+    tags_str = ",".join(req.tags) if req.tags else ""
+    res = await index_file(req.file_path, req.collection or DEFAULT_COLLECTION, tags_str)
     return {"result": res}
 
 @app.delete("/files")

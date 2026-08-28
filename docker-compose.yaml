@@ -36,9 +36,7 @@ services:
     container_name: qdrant
     platform: linux/arm64
     restart: unless-stopped
-    ports:
-      - "${QDRANT_HTTP_PORT:-6333}:6333" # HTTP REST API & Web Dashboard
-      - "${QDRANT_GRPC_PORT:-6334}:6334" # High-throughput gRPC
+
     volumes:
       - ${DATA_DIR:-/srv/data/ai-knowledge}/qdrant:/qdrant/storage
     environment:
@@ -66,7 +64,7 @@ services:
       - traefik.http.routers.qdrant.tls=true
       - traefik.http.routers.qdrant.middlewares=app-fail2ban,security-headers
       - traefik.http.services.qdrant.loadbalancer.server.port=6333
-      - traefik.docker.network=${SHARED_NETWORK:-shared_net}
+      - traefik.docker.network=${SWARM_NETWORK:-homelab_swarm_net}
     networks:
       - shared_net
       - homelab_swarm_net
@@ -83,8 +81,7 @@ services:
     image: mem0/mem0-api-server:latest
     container_name: mem0-api
     restart: unless-stopped
-    ports:
-      - "${MEM0_API_PORT:-8000}:8000"
+
     environment:
       - MEM0_API_KEY=${MEM0_API_KEY:-}
       - VECTOR_STORE=${MEM0_VECTOR_STORE:-qdrant}
@@ -232,7 +229,7 @@ services:
       - traefik.http.routers.mem0.tls=true
       - traefik.http.routers.mem0.middlewares=app-fail2ban,security-headers
       - traefik.http.services.mem0.loadbalancer.server.port=8000
-      - traefik.docker.network=${SHARED_NETWORK:-shared_net}
+      - traefik.docker.network=${SWARM_NETWORK:-homelab_swarm_net}
     networks:
       - shared_net
       - homelab_swarm_net
@@ -260,9 +257,7 @@ services:
     volumes:
       - ${DATA_DIR:-/srv/data/ai-knowledge}/neo4j/data:/data
       - ${DATA_DIR:-/srv/data/ai-knowledge}/neo4j/logs:/logs
-    ports:
-      - "${NEO4J_HTTP_PORT:-7474}:7474" # HTTP Browser Console
-      - "${NEO4J_BOLT_PORT:-7687}:7687" # Bolt protocol
+
     deploy:
       resources:
         limits:
@@ -285,7 +280,7 @@ services:
       - traefik.http.routers.neo4j.tls=true
       - traefik.http.routers.neo4j.middlewares=app-fail2ban,security-headers
       - traefik.http.services.neo4j.loadbalancer.server.port=7474
-      - traefik.docker.network=${SHARED_NETWORK:-shared_net}
+      - traefik.docker.network=${SWARM_NETWORK:-homelab_swarm_net}
     networks:
       - shared_net
       - homelab_swarm_net
@@ -306,8 +301,7 @@ services:
     image: homelab-knowledge-mcp:latest
     container_name: knowledge_mcp
     restart: unless-stopped
-    ports:
-      - "${KNOWLEDGE_MCP_PORT:-8095}:8095"
+
     environment:
       - QDRANT_HOST=qdrant
       - QDRANT_PORT=6333
@@ -356,7 +350,7 @@ services:
       - traefik.http.routers.knowledge-mcp.tls=true
       - traefik.http.routers.knowledge-mcp.middlewares=app-fail2ban,security-headers
       - traefik.http.services.knowledge-mcp.loadbalancer.server.port=8095
-      - traefik.docker.network=${SHARED_NETWORK:-shared_net}
+      - traefik.docker.network=${SWARM_NETWORK:-homelab_swarm_net}
     networks:
       - shared_net
       - homelab_swarm_net
