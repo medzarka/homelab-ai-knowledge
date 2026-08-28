@@ -298,8 +298,7 @@ services:
     build:
       context: ./knowledge-mcp
       dockerfile: Dockerfile
-    image: homelab-knowledge-mcp:latest
-    pull_policy: never
+    image: ghcr.io/medzarka/homelab-knowledge-mcp:latest
     container_name: knowledge_mcp
     restart: unless-stopped
 
