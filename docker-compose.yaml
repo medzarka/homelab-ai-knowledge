@@ -64,7 +64,7 @@ services:
       - traefik.http.routers.qdrant.tls=true
       - traefik.http.routers.qdrant.middlewares=app-fail2ban@file,security-headers@file
       - traefik.http.services.qdrant.loadbalancer.server.port=6333
-      - traefik.docker.network=${SHARED_NETWORK:-shared_net}
+      - traefik.docker.network=${SWARM_NETWORK:-homelab_swarm_net}
     networks:
       - shared_net
       - homelab_swarm_net
@@ -229,7 +229,7 @@ services:
       - traefik.http.routers.mem0.tls=true
       - traefik.http.routers.mem0.middlewares=app-fail2ban@file,security-headers@file
       - traefik.http.services.mem0.loadbalancer.server.port=8000
-      - traefik.docker.network=${SHARED_NETWORK:-shared_net}
+      - traefik.docker.network=${SWARM_NETWORK:-homelab_swarm_net}
     networks:
       - shared_net
       - homelab_swarm_net
@@ -280,7 +280,7 @@ services:
       - traefik.http.routers.neo4j.tls=true
       - traefik.http.routers.neo4j.middlewares=app-fail2ban@file,security-headers@file
       - traefik.http.services.neo4j.loadbalancer.server.port=7474
-      - traefik.docker.network=${SHARED_NETWORK:-shared_net}
+      - traefik.docker.network=${SWARM_NETWORK:-homelab_swarm_net}
     networks:
       - shared_net
       - homelab_swarm_net
@@ -350,7 +350,7 @@ services:
       - traefik.http.routers.knowledge-mcp.tls=true
       - traefik.http.routers.knowledge-mcp.middlewares=app-fail2ban@file,security-headers@file
       - traefik.http.services.knowledge-mcp.loadbalancer.server.port=8095
-      - traefik.docker.network=${SHARED_NETWORK:-shared_net}
+      - traefik.docker.network=${SWARM_NETWORK:-homelab_swarm_net}
     networks:
       - shared_net
       - homelab_swarm_net
