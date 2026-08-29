@@ -62,9 +62,9 @@ services:
       - traefik.http.routers.qdrant.rule=Host(`${QDRANT_DOMAIN:-qdrant.example.com}`)
       - traefik.http.routers.qdrant.entrypoints=websecure
       - traefik.http.routers.qdrant.tls=true
-      - traefik.http.routers.qdrant.middlewares=app-fail2ban,security-headers
+      - traefik.http.routers.qdrant.middlewares=app-fail2ban@file,security-headers@file
       - traefik.http.services.qdrant.loadbalancer.server.port=6333
-      - traefik.docker.network=${SWARM_NETWORK:-homelab_swarm_net}
+      - traefik.docker.network=${SHARED_NETWORK:-shared_net}
     networks:
       - shared_net
       - homelab_swarm_net
@@ -227,9 +227,9 @@ services:
       - traefik.http.routers.mem0.rule=Host(`${MEM0_DOMAIN:-mem0.example.com}`)
       - traefik.http.routers.mem0.entrypoints=websecure
       - traefik.http.routers.mem0.tls=true
-      - traefik.http.routers.mem0.middlewares=app-fail2ban,security-headers
+      - traefik.http.routers.mem0.middlewares=app-fail2ban@file,security-headers@file
       - traefik.http.services.mem0.loadbalancer.server.port=8000
-      - traefik.docker.network=${SWARM_NETWORK:-homelab_swarm_net}
+      - traefik.docker.network=${SHARED_NETWORK:-shared_net}
     networks:
       - shared_net
       - homelab_swarm_net
@@ -278,9 +278,9 @@ services:
       - traefik.http.routers.neo4j.rule=Host(`${NEO4J_DOMAIN:-neo4j.example.com}`)
       - traefik.http.routers.neo4j.entrypoints=websecure
       - traefik.http.routers.neo4j.tls=true
-      - traefik.http.routers.neo4j.middlewares=app-fail2ban,security-headers
+      - traefik.http.routers.neo4j.middlewares=app-fail2ban@file,security-headers@file
       - traefik.http.services.neo4j.loadbalancer.server.port=7474
-      - traefik.docker.network=${SWARM_NETWORK:-homelab_swarm_net}
+      - traefik.docker.network=${SHARED_NETWORK:-shared_net}
     networks:
       - shared_net
       - homelab_swarm_net
@@ -348,10 +348,9 @@ services:
       - traefik.http.routers.knowledge-mcp.rule=Host(`${KNOWLEDGE_MCP_DOMAIN:-knowledge-mcp.example.com}`)
       - traefik.http.routers.knowledge-mcp.entrypoints=websecure
       - traefik.http.routers.knowledge-mcp.tls=true
-      - traefik.http.routers.knowledge-mcp.tls.certresolver=cloudflare
-      - traefik.http.routers.knowledge-mcp.middlewares=app-fail2ban,security-headers
+      - traefik.http.routers.knowledge-mcp.middlewares=app-fail2ban@file,security-headers@file
       - traefik.http.services.knowledge-mcp.loadbalancer.server.port=8095
-      - traefik.docker.network=${SWARM_NETWORK:-homelab_swarm_net}
+      - traefik.docker.network=${SHARED_NETWORK:-shared_net}
     networks:
       - shared_net
       - homelab_swarm_net
