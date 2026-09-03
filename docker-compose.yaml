@@ -17,7 +17,7 @@ services:
         mkdir -p /data/qdrant /data/mem0/history /data/neo4j/data /data/neo4j/logs /data/pgvector
 
         echo ">>> [Init] Setting permissions..."
-        chmod -R 775 /data
+        chmod -R 777 /data
 
         echo ">>> [Init] AI Knowledge directories initialized successfully! Storage guard active."
         sleep infinity
@@ -299,7 +299,7 @@ services:
       context: ./knowledge-mcp
       dockerfile: Dockerfile
     image: ghcr.io/medzarka/homelab-knowledge-mcp:latest
-    container_name: knowledge_mcp
+    container_name: knowledge-mcp
     restart: unless-stopped
 
     environment:
@@ -352,8 +352,14 @@ services:
       - traefik.http.services.knowledge-mcp.loadbalancer.server.port=8095
       - traefik.docker.network=${SWARM_NETWORK:-homelab_swarm_net}
     networks:
-      - shared_net
-      - homelab_swarm_net
+      shared_net:
+        aliases:
+          - knowledge-mcp
+          - knowledge_mcp
+      homelab_swarm_net:
+        aliases:
+          - knowledge-mcp
+          - knowledge_mcp
     logging:
       driver: "json-file"
       options:
