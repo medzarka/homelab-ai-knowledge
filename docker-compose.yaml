@@ -338,6 +338,7 @@ services:
       - MEM0_API_KEY=${MEM0_API_KEY:-}
     volumes:
       - ${DATA_DIR:-/srv/data/ai-knowledge}/workspace:/workspace
+      - ./knowledge-mcp/server.py:/app/server.py:ro
     depends_on:
       qdrant:
         condition: service_healthy

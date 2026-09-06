@@ -756,10 +756,6 @@ try:
         sse_app = mcp.sse_app()
 
     app.mount("/mcp", sse_app)
-
-    @app.get("/sse")
-    async def sse_root(request: Request):
-        return await sse_app(request.scope, request.receive, request._send)
 except Exception as e:
     print("Notice: Mounting SSE route:", e)
 
