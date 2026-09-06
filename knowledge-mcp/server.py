@@ -390,7 +390,8 @@ async def search_knowledge(
 async def index_file(
     file_path: str,
     collection: str = DEFAULT_COLLECTION,
-    tags: str = ""
+    tags: str = "",
+    file_content_base64: Optional[str] = None
 ) -> str:
     """
     Ingests, parses, chunks, and indexes any file (PDF page-by-page, images via Vision, audio via STT, code/text) into Qdrant.
@@ -400,20 +401,35 @@ async def index_file(
         file_path: Absolute or workspace path to the file.
         collection: Qdrant collection name (default: 'workspace').
         tags: Optional comma-separated list of categorization tags (e.g., 'pdf,report,urgent').
+        file_content_base64: Optional base64 encoded file content for cross-host ingestion.
     """
     ensure_collection(collection)
-    p = Path(file_path)
-    if not p.exists() or not p.is_file():
-        return f"Error: File '{file_path}' does not exist."
+    file_path_str = str(Path(file_path))
 
-    suffix = p.suffix.lower()
-    file_size_kb = p.stat().st_size / 1024
+    if file_content_base64:
+        try:
+            file_bytes = base64.b64decode(file_content_base64)
+            suffix = Path(file_path).suffix.lower()
+            file_size_kb = len(file_bytes) / 1024
+            file_name = Path(file_path).name
+        except Exception as e:
+            return f"Error decoding base64 file content: {str(e)}"
+    else:
+        p = Path(file_path)
+        if not p.exists() or not p.is_file():
+            return f"Error: File '{file_path}' does not exist."
+
+        suffix = p.suffix.lower()
+        file_size_kb = p.stat().st_size / 1024
+        file_name = p.name
+        file_bytes = await asyncio.to_thread(p.read_bytes)
+        file_path_str = str(p.resolve())
+
     t0 = time.time()
 
     async with PIPELINE_SEMAPHORE:
         try:
             staged_points = []
-            file_bytes = await asyncio.to_thread(p.read_bytes)
             file_hash = hashlib.sha256(file_bytes).hexdigest()
 
             # ------------------------------------------------------------------
@@ -452,8 +468,8 @@ async def index_file(
                             id=point_id,
                             vector=vector,
                             payload={
-                                "file_path": str(p.resolve()),
-                                "file_name": p.name,
+                                "file_path": file_path_str,
+                                "file_name": file_name,
                                 "file_hash": file_hash,
                                 "document_type": "handwritten_scanned_pdf" if has_handwriting else "digital_pdf",
                                 "page_number": page_idx + 1,
@@ -481,8 +497,8 @@ async def index_file(
                         id=point_id,
                         vector=vector,
                         payload={
-                            "file_path": str(p.resolve()),
-                            "file_name": p.name,
+                            "file_path": file_path_str,
+                            "file_name": file_name,
                             "file_hash": file_hash,
                             "document_type": "image",
                             "tags": [t.strip() for t in tags.split(",") if t.strip()] if tags else [],
@@ -496,7 +512,7 @@ async def index_file(
             # 3. AUDIO / SPEECH PIPELINE (Whisper STT Transcription)
             # ------------------------------------------------------------------
             elif suffix in [".mp3", ".wav", ".m4a", ".ogg", ".flac"]:
-                transcript = await audio_transcribe(file_bytes, p.name)
+                transcript = await audio_transcribe(file_bytes, file_name)
                 vector = await get_embedding(transcript)
                 point_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"{file_path}_{file_hash[:8]}"))
 
@@ -505,8 +521,8 @@ async def index_file(
                         id=point_id,
                         vector=vector,
                         payload={
-                            "file_path": str(p.resolve()),
-                            "file_name": p.name,
+                            "file_path": file_path_str,
+                            "file_name": file_name,
                             "file_hash": file_hash,
                             "document_type": "audio_recording",
                             "tags": [t.strip() for t in tags.split(",") if t.strip()] if tags else [],
@@ -534,8 +550,8 @@ async def index_file(
                             id=point_id,
                             vector=vector,
                             payload={
-                                "file_path": str(p.resolve()),
-                                "file_name": p.name,
+                                "file_path": file_path_str,
+                                "file_name": file_name,
                                 "file_hash": file_hash,
                                 "document_type": "code_or_text",
                                 "chunk_id": c_idx + 1,
@@ -558,7 +574,7 @@ async def index_file(
                         must=[
                             qmodels.FieldCondition(
                                 key="file_path",
-                                match=qmodels.MatchValue(value=str(p.resolve()))
+                                match=qmodels.MatchValue(value=file_path_str)
                             )
                         ]
                     )
@@ -573,7 +589,7 @@ async def index_file(
 
             duration_s = time.time() - t0
             return (
-                f"✅ **Successfully Indexed:** `{p.name}` ({file_size_kb:.1f} KB)\n"
+                f"✅ **Successfully Indexed:** `{file_name}` ({file_size_kb:.1f} KB)\n"
                 f"- **Collection:** `{collection}`\n"
                 f"- **Vectors Created:** `{len(staged_points)}`\n"
                 f"- **Processing Time:** `{duration_s:.2f}s`\n"
@@ -581,7 +597,7 @@ async def index_file(
             )
 
         except Exception as e:
-            return f"❌ **Indexing Failed for `{p.name}`:** {str(e)} (Aborted; no partial vectors committed)."
+            return f"❌ **Indexing Failed for `{file_name}`:** {str(e)} (Aborted; no partial vectors committed)."
 
 @mcp.tool()
 async def delete_file_from_knowledge(file_path: str, collection: str = DEFAULT_COLLECTION) -> str:
@@ -694,6 +710,7 @@ class IndexFileRequest(BaseModel):
     file_path: str
     collection: Optional[str] = DEFAULT_COLLECTION
     tags: Optional[List[str]] = None
+    file_content_base64: Optional[str] = None
 
 @app.get("/health")
 def health():
@@ -718,7 +735,7 @@ async def rest_search(req: SearchRequest):
 @app.post("/index-file")
 async def rest_index_file(req: IndexFileRequest):
     tags_str = ",".join(req.tags) if req.tags else ""
-    res = await index_file(req.file_path, req.collection or DEFAULT_COLLECTION, tags_str)
+    res = await index_file(req.file_path, req.collection or DEFAULT_COLLECTION, tags_str, req.file_content_base64)
     return {"result": res}
 
 @app.delete("/files")
