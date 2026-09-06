@@ -690,15 +690,35 @@ async def list_collections() -> str:
 
 app = FastAPI(title="Homelab AI Knowledge Hub & MCP Server", version="1.0.0")
 
-@app.middleware("http")
-async def api_key_auth_middleware(request: Request, call_next):
-    if KNOWLEDGE_MCP_API_KEY and request.url.path not in ["/health", "/docs", "/openapi.json"]:
-        auth_header = request.headers.get("Authorization", "")
-        api_key_header = request.headers.get("X-API-Key", "")
-        token = auth_header.replace("Bearer ", "").strip() if "Bearer " in auth_header else api_key_header
-        if token != KNOWLEDGE_MCP_API_KEY:
-            return JSONResponse(status_code=401, content={"error": "Unauthorized: Invalid or missing API key."})
-    return await call_next(request)
+class APIKeyAuthASGIMiddleware:
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            return await self.app(scope, receive, send)
+
+        if KNOWLEDGE_MCP_API_KEY and scope.get("path", "") not in ["/health", "/docs", "/openapi.json"]:
+            headers = dict(scope.get("headers", []))
+            auth_header = headers.get(b"authorization", b"").decode("utf-8", errors="ignore")
+            api_key_header = headers.get(b"x-api-key", b"").decode("utf-8", errors="ignore")
+            
+            token = auth_header.replace("Bearer ", "").strip() if "Bearer " in auth_header else api_key_header
+            if token != KNOWLEDGE_MCP_API_KEY:
+                await send({
+                    "type": "http.response.start",
+                    "status": 401,
+                    "headers": [(b"content-type", b"application/json")]
+                })
+                await send({
+                    "type": "http.response.body",
+                    "body": b'{"error": "Unauthorized: Invalid or missing API key."}'
+                })
+                return
+
+        return await self.app(scope, receive, send)
+
+app.add_middleware(APIKeyAuthASGIMiddleware)
 
 class SearchRequest(BaseModel):
     query: str
