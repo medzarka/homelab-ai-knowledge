@@ -52,7 +52,7 @@ services:
       init-volumes:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "timeout 5s bash -c '</dev/tcp/127.0.0.1/6333' || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:6333/ || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 3
@@ -194,7 +194,12 @@ services:
         ''')
 
         if 'api_key_auth_middleware' not in code:
-            code = re.sub(r'(app = FastAPI\([^)]+\))', r'\1\n' + auth_middleware, code)
+            if 'app = FastAPI(' in code:
+                code = re.sub(r'(app = FastAPI\([^)]+\))', r'\1\n' + auth_middleware, code)
+            elif 'app = FastAPI()' in code:
+                code = code.replace('app = FastAPI()', 'app = FastAPI()\n' + auth_middleware)
+            else:
+                code += '\n' + auth_middleware
 
         with open('/app/main.py', 'w') as f:
             f.write(code)
