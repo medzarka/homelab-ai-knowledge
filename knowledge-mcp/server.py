@@ -8,6 +8,8 @@ import uuid
 import base64
 import hashlib
 import asyncio
+import secrets
+import urllib.parse
 from pathlib import Path
 from typing import Dict, List, Optional, Any, Union, Tuple
 
@@ -76,7 +78,7 @@ NEO4J_PASS = os.environ.get("NEO4J_PASSWORD", "mem0graph_secure_pass")
 
 MEM0_API_URL = os.environ.get("MEM0_API_URL", "http://mem0-api:8000")
 MEM0_API_KEY = os.environ.get("MEM0_API_KEY", "")
-KNOWLEDGE_MCP_API_KEY = os.environ.get("KNOWLEDGE_MCP_API_KEY", "")
+KNOWLEDGE_MCP_API_KEY = (os.environ.get("KNOWLEDGE_MCP_API_KEY") or "").strip()
 
 # --- Global Concurrency Guard ---
 PIPELINE_SEMAPHORE = asyncio.Semaphore(MAX_CONCURRENT_JOBS)
@@ -702,9 +704,23 @@ class APIKeyAuthASGIMiddleware:
             headers = dict(scope.get("headers", []))
             auth_header = headers.get(b"authorization", b"").decode("utf-8", errors="ignore")
             api_key_header = headers.get(b"x-api-key", b"").decode("utf-8", errors="ignore")
-            
-            token = auth_header.replace("Bearer ", "").strip() if "Bearer " in auth_header else api_key_header
-            if token != KNOWLEDGE_MCP_API_KEY:
+
+            # Check query string for ?api_key= or ?token=
+            query_str = scope.get("query_string", b"").decode("utf-8", errors="ignore")
+            query_params = urllib.parse.parse_qs(query_str)
+            query_token = (query_params.get("api_key") or query_params.get("token") or [""])[0]
+
+            token = ""
+            if "Bearer " in auth_header:
+                token = auth_header.replace("Bearer ", "").strip()
+            elif auth_header:
+                token = auth_header.strip()
+            elif api_key_header:
+                token = api_key_header.strip()
+            elif query_token:
+                token = query_token.strip()
+
+            if not token or not secrets.compare_digest(token, KNOWLEDGE_MCP_API_KEY):
                 await send({
                     "type": "http.response.start",
                     "status": 401,
@@ -712,7 +728,7 @@ class APIKeyAuthASGIMiddleware:
                 })
                 await send({
                     "type": "http.response.body",
-                    "body": b'{"error": "Unauthorized: Invalid or missing API key."}'
+                    "body": b'{"error": "Unauthorized: Invalid or missing Knowledge MCP API key."}'
                 })
                 return
 
@@ -732,6 +748,10 @@ class IndexFileRequest(BaseModel):
     tags: Optional[List[str]] = None
     file_content_base64: Optional[str] = None
 
+class DeleteFileRequest(BaseModel):
+    file_path: str
+    collection: Optional[str] = DEFAULT_COLLECTION
+
 @app.get("/health")
 def health():
     return {
@@ -739,7 +759,7 @@ def health():
         "qdrant_host": QDRANT_HOST,
         "embedding_primary": EMBEDDING_PRIMARY_URL,
         "vision_primary": VISION_PRIMARY_URL,
-        "mcp_sse_endpoint": "/sse"
+        "mcp_sse_endpoint": "/mcp/sse"
     }
 
 @app.get("/collections")
@@ -763,6 +783,12 @@ async def rest_delete_file(file_path: str, collection: str = DEFAULT_COLLECTION)
     res = await delete_file_from_knowledge(file_path, collection)
     return {"result": res}
 
+@app.post("/delete-file")
+@app.delete("/delete-file")
+async def rest_post_delete_file(req: DeleteFileRequest):
+    res = await delete_file_from_knowledge(req.file_path, req.collection or DEFAULT_COLLECTION)
+    return {"result": res}
+
 # Mount MCP SSE application
 try:
     if TransportSecuritySettings:
@@ -776,6 +802,10 @@ try:
         sse_app = mcp.sse_app()
 
     app.mount("/mcp", sse_app)
+
+    @app.get("/sse")
+    async def sse_root(request: Request):
+        return await sse_app(request.scope, request.receive, request._send)
 except Exception as e:
     print("Notice: Mounting SSE route:", e)
 

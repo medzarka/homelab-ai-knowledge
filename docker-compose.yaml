@@ -302,6 +302,7 @@ services:
     restart: unless-stopped
 
     environment:
+      - KNOWLEDGE_MCP_API_KEY=${KNOWLEDGE_MCP_API_KEY:-}
       - QDRANT_HOST=qdrant
       - QDRANT_PORT=6333
       - QDRANT_API_KEY=${QDRANT_API_KEY:-}
