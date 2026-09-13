@@ -294,9 +294,6 @@ services:
   # Multi-Modal Qdrant Ingestion, Page-by-Page PDF, Neo4j, Mem0
   # ========================================================
   knowledge-mcp:
-    build:
-      context: ./knowledge-mcp
-      dockerfile: Dockerfile
     image: ghcr.io/medzarka/homelab-knowledge-mcp:latest
     pull_policy: always
     container_name: knowledge-mcp
