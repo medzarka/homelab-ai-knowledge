@@ -32,7 +32,7 @@ services:
   # QDRANT VECTOR DATABASE (High-Performance Vector Store)
   # ========================================================
   qdrant:
-    image: qdrant/qdrant:v1.18.0
+    image: qdrant/qdrant:latest
     container_name: qdrant
     platform: linux/arm64
     restart: unless-stopped
@@ -298,6 +298,7 @@ services:
       context: ./knowledge-mcp
       dockerfile: Dockerfile
     image: ghcr.io/medzarka/homelab-knowledge-mcp:latest
+    pull_policy: always
     container_name: knowledge-mcp
     restart: unless-stopped
 
