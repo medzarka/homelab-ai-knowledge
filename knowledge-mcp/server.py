@@ -715,15 +715,22 @@ class APIKeyAuthASGIMiddleware:
             query_params = urllib.parse.parse_qs(query_str)
             query_token = (query_params.get("api_key") or query_params.get("token") or [""])[0]
 
-            token = ""
+            candidates = []
             if "Bearer " in auth_header:
-                token = auth_header.replace("Bearer ", "").strip()
+                candidates.append(auth_header.replace("Bearer ", "").strip())
             elif auth_header:
-                token = auth_header.strip()
-            elif api_key_header:
-                token = api_key_header.strip()
-            elif query_token:
-                token = query_token.strip()
+                candidates.append(auth_header.strip())
+            if api_key_header:
+                candidates.append(api_key_header.strip())
+            if query_token:
+                candidates.append(query_token.strip())
+
+            # Find first candidate that is not an unexpanded template placeholder
+            token = ""
+            for cand in candidates:
+                if cand and not cand.startswith("${"):
+                    token = cand
+                    break
 
             if not token or not secrets.compare_digest(token, KNOWLEDGE_MCP_API_KEY):
                 await send({
@@ -808,8 +815,13 @@ try:
 
     app.mount("/mcp", sse_app)
 
-    @app.get("/sse")
+    @app.api_route("/sse", methods=["GET"])
     async def sse_root(request: Request):
+        return await sse_app(request.scope, request.receive, request._send)
+
+    @app.api_route("/messages", methods=["GET", "POST"])
+    @app.api_route("/messages/{path:path}", methods=["GET", "POST"])
+    async def sse_messages_root(request: Request, path: str = ""):
         return await sse_app(request.scope, request.receive, request._send)
 except Exception as e:
     print("Notice: Mounting SSE route:", e)
