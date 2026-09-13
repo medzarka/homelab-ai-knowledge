@@ -150,20 +150,23 @@ async def get_embedding(text: str) -> List[float]:
     except Exception as e:
         print(f"Warning: Primary Embedding failed ({str(e)[:40]}), trying fallback...")
 
-    # 2. Fallback to LiteLLM / OpenAI-compatible endpoint
-    try:
-        headers = {"Authorization": f"Bearer {EMBEDDING_FALLBACK_KEY}"} if EMBEDDING_FALLBACK_KEY else {}
-        resp = await http_client.post(
-            EMBEDDING_FALLBACK_URL,
-            json={"input": [text[:4096]], "model": EMBEDDING_MODEL},
-            headers=headers,
-            timeout=20.0
-        )
-        if resp.status_code == 200:
-            data = resp.json()
-            return data["data"][0]["embedding"]
-    except Exception as e:
-        raise RuntimeError(f"All embedding providers failed: {str(e)}")
+    # 2. Fallback to LiteLLM / OpenAI-compatible endpoint (if configured)
+    if EMBEDDING_FALLBACK_URL and EMBEDDING_FALLBACK_URL.strip():
+        try:
+            headers = {"Authorization": f"Bearer {EMBEDDING_FALLBACK_KEY}"} if EMBEDDING_FALLBACK_KEY else {}
+            resp = await http_client.post(
+                EMBEDDING_FALLBACK_URL.strip(),
+                json={"input": [text[:4096]], "model": EMBEDDING_MODEL},
+                headers=headers,
+                timeout=20.0
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                return data["data"][0]["embedding"]
+        except Exception as e:
+            raise RuntimeError(f"All embedding providers failed: {str(e)}")
+    else:
+        raise RuntimeError("Primary embedding service unavailable and fallback is disabled.")
 
 async def rerank_documents(query: str, texts: List[str], top_n: int = 5) -> List[Dict[str, Any]]:
     """Reranks candidate texts using primary TEI -> fallback LiteLLM cross-encoder."""
@@ -171,36 +174,38 @@ async def rerank_documents(query: str, texts: List[str], top_n: int = 5) -> List
         return []
 
     # 1. Try Primary TEI Reranker with Bearer Token
-    try:
-        headers = {"Authorization": f"Bearer {RERANKER_PRIMARY_KEY}"} if RERANKER_PRIMARY_KEY else {}
-        resp = await http_client.post(
-            RERANKER_PRIMARY_URL,
-            json={"query": query, "texts": texts, "raw_scores": False},
-            headers=headers,
-            timeout=15.0
-        )
-        if resp.status_code == 200:
-            results = resp.json()
-            return sorted(results, key=lambda x: x.get("score", 0), reverse=True)[:top_n]
-    except Exception as e:
-        print(f"Warning: Primary Reranker failed ({str(e)[:40]}), trying fallback...")
+    if RERANKER_PRIMARY_URL and RERANKER_PRIMARY_URL.strip():
+        try:
+            headers = {"Authorization": f"Bearer {RERANKER_PRIMARY_KEY}"} if RERANKER_PRIMARY_KEY else {}
+            resp = await http_client.post(
+                RERANKER_PRIMARY_URL.strip(),
+                json={"query": query, "texts": texts, "raw_scores": False},
+                headers=headers,
+                timeout=15.0
+            )
+            if resp.status_code == 200:
+                results = resp.json()
+                return sorted(results, key=lambda x: x.get("score", 0), reverse=True)[:top_n]
+        except Exception as e:
+            print(f"Warning: Primary Reranker failed ({str(e)[:40]}), trying fallback...")
 
-    # 2. Fallback LiteLLM Rerank
-    try:
-        headers = {"Authorization": f"Bearer {RERANKER_FALLBACK_KEY}"} if RERANKER_FALLBACK_KEY else {}
-        resp = await http_client.post(
-            RERANKER_FALLBACK_URL,
-            json={"query": query, "documents": texts, "model": RERANKER_MODEL, "top_n": top_n},
-            headers=headers,
-            timeout=20.0
-        )
-        if resp.status_code == 200:
-            data = resp.json()
-            return [{"index": r["index"], "score": r["relevance_score"]} for r in data.get("results", [])]
-    except Exception:
-        pass
+    # 2. Fallback LiteLLM Rerank (if configured)
+    if RERANKER_FALLBACK_URL and RERANKER_FALLBACK_URL.strip():
+        try:
+            headers = {"Authorization": f"Bearer {RERANKER_FALLBACK_KEY}"} if RERANKER_FALLBACK_KEY else {}
+            resp = await http_client.post(
+                RERANKER_FALLBACK_URL.strip(),
+                json={"query": query, "documents": texts, "model": RERANKER_MODEL, "top_n": top_n},
+                headers=headers,
+                timeout=20.0
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                return [{"index": r["index"], "score": r["relevance_score"]} for r in data.get("results", [])]
+        except Exception:
+            pass
 
-    # Basic fallback if reranker fails entirely
+    # Basic fallback if reranker fails or is disabled (Pass raw candidate ranking)
     return [{"index": i, "score": 1.0 - (i * 0.05)} for i in range(min(len(texts), top_n))]
 
 async def vision_transcribe(image_bytes: bytes, prompt: str = ACADEMIC_VLM_PROMPT) -> str:
