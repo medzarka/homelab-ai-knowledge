@@ -14,7 +14,7 @@ services:
     command:
       - |
         echo ">>> [Init] Creating storage directories under /data..."
-        mkdir -p /data/qdrant /data/mem0/history /data/neo4j/data /data/neo4j/logs /data/pgvector
+        mkdir -p /data/qdrant /data/mem0/history /data/neo4j/data /data/neo4j/logs /data/pgvector /data/vaults/${OBSIDIAN_VAULT_NAME:-default} /data/ignis/data
 
         echo ">>> [Init] Setting permissions..."
         chmod -R 777 /data
@@ -22,7 +22,7 @@ services:
         echo ">>> [Init] AI Knowledge directories initialized successfully! Storage guard active."
         sleep infinity
     healthcheck:
-      test: ["CMD-SHELL", "test -d /data/qdrant && test -d /data/mem0 || exit 1"]
+      test: ["CMD-SHELL", "test -d /data/qdrant && test -d /data/mem0 && test -d /data/vaults || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -364,6 +364,98 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+
+  # ========================================================
+  # IGNIS (Web-based Obsidian Interface)
+  # Multi-Arch Ready: Self-Hosted Browser Obsidian
+  # ========================================================
+  ignis:
+    image: ${IGNIS_IMAGE:-ghcr.io/nystik-gh/ignis:latest}
+    container_name: ignis-obsidian
+    restart: unless-stopped
+    environment:
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+      - TZ=${TZ:-UTC}
+    volumes:
+      - ${DATA_DIR:-/srv/data/ai-knowledge}/vaults:/vaults
+      - ${DATA_DIR:-/srv/data/ai-knowledge}/ignis/data:/app/data
+      - ignis_app:/app/obsidian-app
+    deploy:
+      resources:
+        limits:
+          memory: 2048M
+        reservations:
+          memory: 256M
+    depends_on:
+      init-volumes:
+        condition: service_healthy
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.ignis.rule=Host(`${IGNIS_DOMAIN:-ignis.example.com}`)
+      - traefik.http.routers.ignis.entrypoints=websecure
+      - traefik.http.routers.ignis.tls=true
+      # Protected with Authelia 2FA SSO (Strictly restricted to group 'ai-agents')
+      - traefik.http.routers.ignis.middlewares=authelia-sso@file,app-fail2ban@file,security-headers@file
+      - traefik.http.services.ignis.loadbalancer.server.port=8080
+      - traefik.docker.network=${SWARM_NETWORK:-homelab_swarm_net}
+    networks:
+      shared_net:
+        aliases:
+          - ignis
+          - ignis-obsidian
+      homelab_swarm_net:
+        aliases:
+          - ignis
+          - ignis-obsidian
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ========================================================
+  # OBSIDIAN MCP SERVER (Model Context Protocol Bridge)
+  # Dynamic Read/Write/Search of Markdown Notes for Hermes Agent
+  # ========================================================
+  obsidian-mcp:
+    image: ${OBSIDIAN_MCP_IMAGE:-ghcr.io/ldziura/obsidian-mcp-server:latest}
+    container_name: obsidian-mcp
+    restart: unless-stopped
+    environment:
+      - API_KEY=${OBSIDIAN_MCP_API_KEY:-}
+      - PORT=3000
+    volumes:
+      - ${DATA_DIR:-/srv/data/ai-knowledge}/vaults/${OBSIDIAN_VAULT_NAME:-default}:/vault
+    deploy:
+      resources:
+        limits:
+          memory: 1024M
+        reservations:
+          memory: 128M
+    depends_on:
+      init-volumes:
+        condition: service_healthy
+      ignis:
+        condition: service_started
+    networks:
+      shared_net:
+        aliases:
+          - obsidian-mcp
+          - obsidian_mcp
+      homelab_swarm_net:
+        aliases:
+          - obsidian-mcp
+          - obsidian_mcp
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  ignis_app:
+    name: ${IGNIS_APP_VOLUME:-knowledge_ignis_app}
 
 networks:
   shared_net:

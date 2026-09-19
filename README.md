@@ -14,7 +14,7 @@
 
 A sovereign, high-performance **Multi-Modal AI Knowledge & Long-Term Memory Engine** designed for **Hermes Agent**, **Open-WebUI**, **Claude**, and **Autonomous Coding Agents**.
 
-The platform unifies **Qdrant Vector Database**, **Neo4j Knowledge Graph**, **Mem0 Episodic Memory**, and **Local AI Models** (`BAAI/bge-m3`, `BAAI/bge-reranker-v2-m3`, `Qwen2.5-VL`, `Faster-Whisper-Large-v3`) into a single, high-speed **Model Context Protocol (MCP)** server.
+The platform unifies **Qdrant Vector Database**, **Neo4j Knowledge Graph**, **Mem0 Episodic Memory**, **Ignis Web Obsidian UI**, **Obsidian MCP Server**, and **Local AI Models** (`BAAI/bge-m3`, `BAAI/bge-reranker-v2-m3`, `Qwen2.5-VL`, `Faster-Whisper-Large-v3`) into a sovereign AI knowledge and research ecosystem.
 
 ---
 
@@ -51,23 +51,28 @@ The platform unifies **Qdrant Vector Database**, **Neo4j Knowledge Graph**, **Me
                                   [ Hermes Agent / Open-WebUI ]
                                                 │
                                     (MCP Tools via SSE / REST)
-                                                ▼
-                        ┌───────────────────────────────────────────────┐
-                        │    Homelab AI Knowledge MCP Server (:8095)    │
-                        └───────┬───────────────┬───────────────┬───────┘
-                                │               │               │
-        ┌───────────────────────┼───────────────┼───────────────┼───────────────────────┐
-        ▼                       ▼               ▼               ▼                       ▼
-┌───────────────┐       ┌───────────────┐ ┌───────────┐ ┌───────────────┐       ┌───────────────┐
-│ Qdrant Vector │       │ TEI Embedding │ │ TEI Rerank│ │ Ollama Vision │       │ Speaches STT  │
-│  Store :6333  │       │ BAAI/bge-m3   │ │ bge-v2-m3 │ │ qwen2.5vl:3b  │       │ Whisper-v3    │
-│  (1024 dims)  │       │     :8089     │ │   :8087   │ │    :11434     │       │     :8086     │
-└───────────────┘       └───────┬───────┘ └─────┬─────┘ └───────┬───────┘       └───────┬───────┘
-                                │ (Failover)    │ (Failover)    │ (Failover)            │ (Failover)
-                                ▼               ▼               ▼                       ▼
-                        ┌───────────────────────────────────────────────────────────────────────┐
-                        │              LiteLLM Gateway (Proxy & Cloud Fallbacks)                │
-                        └───────────────────────────────────────────────────────────────────────┘
+                        ┌───────────────────────┴───────────────────────┐
+                        ▼                                               ▼
+        ┌───────────────────────────────┐               ┌───────────────────────────────┐
+        │  Knowledge MCP Server (:8095) │               │   Obsidian MCP Server (:3000) │
+        └───────┬───────┬───────┬───────┘               └───────────────┬───────────────┘
+                │       │       │                                       │ (Shared Mount)
+                │       │       │                                       ▼
+                │       │       │               ┌───────────────────────────────────────────────┐
+                │       │       │               │      Ignis Web Obsidian Interface (:8080)     │
+                │       │       │               │   (Vaults in /srv/data/ai-knowledge/vaults)   │
+                │       │       │               └───────────────────────────────────────────────┘
+        ┌───────┼───────┼───────┼───────────────────────┐
+        ▼       ▼       ▼       ▼                       ▼
+┌───────────┐ ┌───┐ ┌───────┐ ┌───────────┐     ┌───────────────┐
+│ Qdrant DB │ │TEI│ │TEI-Rer│ │Ollama VLM │     │ Speaches STT  │
+│   :6333   │ │:89│ │ :8087 │ │  :11434   │     │     :8086     │
+└───────────┘ └───┘ └───────┘ └───────────┘     └───────────────┘
+                                │ (Failover)    │ (Failover)            │ (Failover)
+                                ▼               ▼                       ▼
+                        ┌───────────────────────────────────────────────────────┐
+                        │        LiteLLM Gateway (Proxy & Cloud Fallbacks)      │
+                        └───────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -111,12 +116,37 @@ mcp_servers:
     url: http://100.x.y.z:8088/sse
     timeout: 120
 
+  # 3. Obsidian Knowledge Vault MCP (Live Markdown Notes via Ignis & Obsidian MCP)
+  obsidian_vault:
+    transport: sse
+    url: http://obsidian-mcp:3000/sse
+    timeout: 60
+    headers:
+      Authorization: Bearer your_secure_obsidian_mcp_api_key
+
 # Optional: Configure Mem0 directly for conversational history
 memory:
   provider: mem0
   api_url: http://mem0-api:8000
   collection: memories
 ```
+
+---
+
+## 📓 Ignis (Web-based Obsidian) & Obsidian MCP Bridge
+
+This stack integrates **Ignis** (self-hosted, browser-based native Obsidian) alongside an **Obsidian MCP Server** bridge over a shared Docker volume, allowing autonomous agents to read, write, and search your personal notes in real-time.
+
+### Architectural Highlights:
+1. **Shared Volume Workflow**: Ignis saves notes as standard Markdown files inside `/srv/data/ai-knowledge/vaults`. The `obsidian-mcp` container attaches directly to the active vault (`/vaults/${OBSIDIAN_VAULT_NAME:-default}`), granting AI agents direct tool access to your notes.
+2. **Zero-Trust Access Control**: Ignis does not possess native authentication. It is placed behind Traefik v3 with `authelia-sso@file` middleware, requiring **2-Factor Authentication** strictly limited to users belonging to the **`ai-agents`** group.
+3. **Live UI Synchronization**: The instant Hermes or Claude edits or creates a note via MCP, Ignis's live-sync protocol immediately renders the change in your browser.
+
+### Setup Instructions:
+1. **Start the Stack**: Launch services with `docker compose up -d`.
+2. **Open Ignis in Browser**: Navigate to `https://${IGNIS_DOMAIN}` (e.g. `https://ignis.example.com`). Authenticate via Authelia SSO (ensure your user belongs to group `ai-agents`).
+3. **Initialize Vault**: Create a new vault or open an existing one named to match `OBSIDIAN_VAULT_NAME` (default: `default`).
+4. **Connect Hermes Agent**: Configure the `obsidian_vault` MCP server entry in `~/.hermes/config.yaml` as documented above.
 
 ---
 
@@ -256,4 +286,14 @@ VISION_FALLBACK_MODEL=google/gemini-2.0-flash
 AUDIO_FALLBACK_URL=http://litellm:4000/v1/audio/transcriptions
 AUDIO_FALLBACK_KEY=sk-homelab-master-key
 AUDIO_FALLBACK_MODEL=openai/whisper-1
+
+# --- Ignis & Obsidian MCP Bridge ---
+IGNIS_DOMAIN=ignis.example.com
+IGNIS_IMAGE=ghcr.io/nystik-gh/ignis:latest
+OBSIDIAN_VAULT_NAME=default
+# Obsidian MCP is internal-only on Docker Swarm network (:3000)
+OBSIDIAN_MCP_IMAGE=ghcr.io/ldziura/obsidian-mcp-server:latest
+OBSIDIAN_MCP_API_KEY=your_secure_obsidian_mcp_api_key
+PUID=1000
+PGID=1000
 ```
