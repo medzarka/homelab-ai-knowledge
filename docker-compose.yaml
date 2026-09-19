@@ -334,8 +334,10 @@ services:
       - NEO4J_PASSWORD=${NEO4J_PASSWORD:-mem0graph_secure_pass}
       - MEM0_API_URL=http://mem0-api:8000
       - MEM0_API_KEY=${MEM0_API_KEY:-}
+      - OBSIDIAN_VAULT_PATH=/vault
     volumes:
       - ${DATA_DIR:-/srv/data/ai-knowledge}/workspace:/workspace
+      - ${DATA_DIR:-/srv/data/ai-knowledge}/vaults/${OBSIDIAN_VAULT_NAME:-default}:/vault
       - ./knowledge-mcp/server.py:/app/server.py:ro
     depends_on:
       qdrant:
@@ -370,7 +372,7 @@ services:
   # Multi-Arch Ready: Self-Hosted Browser Obsidian
   # ========================================================
   ignis:
-    image: ${IGNIS_IMAGE:-ghcr.io/nystik-gh/ignis:latest}
+    image: ${IGNIS_IMAGE:-nobbe/ignis:latest}
     container_name: ignis-obsidian
     restart: unless-stopped
     environment:
@@ -408,45 +410,6 @@ services:
         aliases:
           - ignis
           - ignis-obsidian
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-
-  # ========================================================
-  # OBSIDIAN MCP SERVER (Model Context Protocol Bridge)
-  # Dynamic Read/Write/Search of Markdown Notes for Hermes Agent
-  # ========================================================
-  obsidian-mcp:
-    image: ${OBSIDIAN_MCP_IMAGE:-ghcr.io/ldziura/obsidian-mcp-server:latest}
-    container_name: obsidian-mcp
-    restart: unless-stopped
-    environment:
-      - API_KEY=${OBSIDIAN_MCP_API_KEY:-}
-      - PORT=3000
-    volumes:
-      - ${DATA_DIR:-/srv/data/ai-knowledge}/vaults/${OBSIDIAN_VAULT_NAME:-default}:/vault
-    deploy:
-      resources:
-        limits:
-          memory: 1024M
-        reservations:
-          memory: 128M
-    depends_on:
-      init-volumes:
-        condition: service_healthy
-      ignis:
-        condition: service_started
-    networks:
-      shared_net:
-        aliases:
-          - obsidian-mcp
-          - obsidian_mcp
-      homelab_swarm_net:
-        aliases:
-          - obsidian-mcp
-          - obsidian_mcp
     logging:
       driver: "json-file"
       options:
