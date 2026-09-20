@@ -89,6 +89,7 @@ services:
       - OPENAI_API_KEY=${LITELLM_MASTER_KEY}
       - LLM_MODEL=${MEM0_LLM_MODEL:-hermes-default}
       - EMBEDDING_MODEL=${MEM0_EMBEDDING_MODEL:-BAAI/bge-m3}
+      - NEO4J_PASSWORD=${NEO4J_PASSWORD:-mem0graph_secure_pass}
     volumes:
       - ${DATA_DIR:-/srv/data/ai-knowledge}/mem0/history:/app/.mem0
     entrypoint: ["/bin/sh", "-c"]
