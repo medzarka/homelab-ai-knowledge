@@ -14,7 +14,7 @@ services:
     command:
       - |
         echo ">>> [Init] Creating storage directories under /data..."
-        mkdir -p /data/qdrant /data/mem0/history /data/neo4j/data /data/neo4j/logs /data/pgvector /data/vaults/${OBSIDIAN_VAULT_NAME:-default} /data/ignis/data
+        mkdir -p /data/qdrant /data/mem0/history /data/neo4j/data /data/neo4j/logs /data/pgvector
 
         echo ">>> [Init] Setting permissions..."
         chmod -R 777 /data
@@ -22,7 +22,7 @@ services:
         echo ">>> [Init] AI Knowledge directories initialized successfully! Storage guard active."
         sleep infinity
     healthcheck:
-      test: ["CMD-SHELL", "test -d /data/qdrant && test -d /data/mem0 && test -d /data/vaults || exit 1"]
+      test: ["CMD-SHELL", "test -d /data/qdrant && test -d /data/mem0 || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -85,9 +85,6 @@ services:
       - QDRANT_PORT=6333
       - QDRANT_API_KEY=${QDRANT_API_KEY:-}
       - QDRANT_COLLECTION=${MEM0_COLLECTION:-memories}
-      - NEO4J_URI=bolt://neo4j:7687
-      - NEO4J_USERNAME=neo4j
-      - NEO4J_PASSWORD=${NEO4J_PASSWORD:-mem0graph_secure_pass}
       - OPENAI_BASE_URL=${LITELLM_API_BASE:-http://litellm:4000/v1}
       - OPENAI_API_KEY=${LITELLM_MASTER_KEY}
       - LLM_MODEL=${MEM0_LLM_MODEL:-hermes-default}
@@ -329,15 +326,8 @@ services:
       - AUDIO_FALLBACK_URL=${AUDIO_FALLBACK_URL:-http://litellm:4000/v1/audio/transcriptions}
       - AUDIO_FALLBACK_KEY=${LITELLM_MASTER_KEY:-}
       - AUDIO_FALLBACK_MODEL=${AUDIO_FALLBACK_MODEL:-openai/whisper-1}
-      - NEO4J_URI=bolt://neo4j:7687
-      - NEO4J_USERNAME=neo4j
-      - NEO4J_PASSWORD=${NEO4J_PASSWORD:-mem0graph_secure_pass}
-      - MEM0_API_URL=http://mem0-api:8000
-      - MEM0_API_KEY=${MEM0_API_KEY:-}
-      - OBSIDIAN_VAULT_PATH=/vault
     volumes:
       - ${DATA_DIR:-/srv/data/ai-knowledge}/workspace:/workspace
-      - ${DATA_DIR:-/srv/data/ai-knowledge}/vaults/${OBSIDIAN_VAULT_NAME:-default}:/vault
       - ./knowledge-mcp/server.py:/app/server.py:ro
     depends_on:
       qdrant:
@@ -366,59 +356,6 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
-
-  # ========================================================
-  # IGNIS (Web-based Obsidian Interface)
-  # Multi-Arch Ready: Self-Hosted Browser Obsidian
-  # ========================================================
-  ignis:
-    image: ${IGNIS_IMAGE:-nobbe/ignis:latest}
-    container_name: ignis-obsidian
-    restart: unless-stopped
-    environment:
-      - PUID=${PUID:-1000}
-      - PGID=${PGID:-1000}
-      - TZ=${TZ:-UTC}
-    volumes:
-      - ${DATA_DIR:-/srv/data/ai-knowledge}/vaults:/vaults
-      - ${DATA_DIR:-/srv/data/ai-knowledge}/ignis/data:/app/data
-      - ignis_app:/app/obsidian-app
-    deploy:
-      resources:
-        limits:
-          memory: 2048M
-        reservations:
-          memory: 256M
-    depends_on:
-      init-volumes:
-        condition: service_healthy
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.ignis.rule=Host(`${IGNIS_DOMAIN:-ignis.example.com}`)
-      - traefik.http.routers.ignis.entrypoints=websecure
-      - traefik.http.routers.ignis.tls=true
-      # Protected with Authelia 2FA SSO (Strictly restricted to group 'ai-agents')
-      - traefik.http.routers.ignis.middlewares=authelia-sso@file,app-fail2ban@file,security-headers@file
-      - traefik.http.services.ignis.loadbalancer.server.port=8080
-      - traefik.docker.network=${SWARM_NETWORK:-homelab_swarm_net}
-    networks:
-      shared_net:
-        aliases:
-          - ignis
-          - ignis-obsidian
-      homelab_swarm_net:
-        aliases:
-          - ignis
-          - ignis-obsidian
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-
-volumes:
-  ignis_app:
-    name: ${IGNIS_APP_VOLUME:-knowledge_ignis_app}
 
 networks:
   shared_net:
